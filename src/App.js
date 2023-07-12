@@ -23,7 +23,7 @@ import {
   query,orderBy
 } from "firebase/firestore";
 import { app } from "./firebaseConfig";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -36,22 +36,28 @@ const logoutHandler = () => {
 };
 
 function App() {
-  const q = query(collection(db,"Messages"),orderBy("createAt","asc"));
+  const q = query(collection(db,"Messages"),orderBy("createdAt","asc"));
   const [user, setUser] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
+
+  const divForScroll = useRef(null)
 
   const submitHandler = async (e) => {
     e.preventDefault();
 
     try {
+
+      setMessage("");
+
+
       await addDoc(collection(db, "Messages"), {
         text: message,
         uid: user.uid,
         uri: user.photoURL,
         createdAt: serverTimestamp(),
       });
-      setMessage("");
+      divForScroll.current.scrollIntoView({behavior: "smooth"})
     } catch (error) {
       alert(error);
     }
@@ -68,8 +74,8 @@ function App() {
       setUser(data);
     });
 
-   const unsubscribeForMessage =  onSnapshot(collection(db, "Messages"), (snap) => {
-  // const unsubscribeForMessage = onSnapshot(q, (snap) => {
+  //  const unsubscribeForMessage =  onSnapshot(collection(db, "Messages"), (snap) => {
+  const unsubscribeForMessage = onSnapshot(q, (snap) => {
       setMessages(
         snap.docs.map((item) => {
           const id = item.id;
@@ -81,7 +87,7 @@ function App() {
       unsubscribe();
       unsubscribeForMessage();
     };
-  });
+  }, []);
 
   return (
     <Box bg={"pink"}>
@@ -99,12 +105,15 @@ function App() {
               {messages.map((item) => (
                 <Message
                   key={item.id}
-                  user={item.uri === user.uri ? "me" : "other"}
+                  user={item.uid === user.uid ? "me" : "other"}
                   text={item.text}
                   uri={item.uri}
                 />
               ))}
+
+            <div ref={divForScroll}></div>
             </VStack>
+
 
             <form style={{ width: "100%" }} onSubmit={submitHandler}>
               <HStack>
